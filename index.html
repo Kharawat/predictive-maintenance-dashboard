@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A browser-based predictive maintenance dashboard for evaluating machine sensor data."
+    />
+    <title>Machine Health Intelligence | Phoom</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Machine Health Intelligence navigation">
+        <a class="brand" href="#overview" aria-label="Machine Health Intelligence home">
+          <span class="brand-mark">MHI</span>
+          <span>
+            <strong>Machine Health</strong>
+            <small>Intelligence</small>
+          </span>
+        </a>
+
+        <nav class="nav-list" aria-label="Dashboard sections">
+          <a class="active" href="#overview">Overview</a>
+          <a href="#assets">Assets</a>
+          <a href="#maintenance">Maintenance queue</a>
+          <a href="#data">Data model</a>
+        </nav>
+
+        <div class="model-note">
+          <span class="model-dot"></span>
+          <div>
+            <strong>Rule-based model</strong>
+            <p>Sensor readings are processed in this browser.</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="dashboard">
+        <header class="topbar" id="overview">
+          <div>
+            <p class="eyebrow">Project 04 / Mechanical Engineering + Data</p>
+            <h1>Machine Health Intelligence</h1>
+            <p class="subtitle">Sensor-driven maintenance prioritization for pumps, motors, fans, and rotating equipment.</p>
+          </div>
+          <div class="topbar-actions">
+            <label class="button secondary upload-control" for="csvInput">
+              Upload CSV
+              <input id="csvInput" type="file" accept=".csv,text/csv" />
+            </label>
+            <button class="button secondary" type="button" id="loadSample">Load demo data</button>
+            <button class="button primary" type="button" id="exportReport">Export report</button>
+          </div>
+        </header>
+
+        <div class="dataset-bar" aria-live="polite">
+          <span class="dataset-indicator"></span>
+          <span id="sourceLabel">Built-in demo dataset</span>
+          <span class="dataset-divider"></span>
+          <span id="recordLabel">0 sensor readings</span>
+          <span id="statusMessage" class="status-message"></span>
+        </div>
+
+        <section class="metric-grid" aria-label="Machine health summary metrics">
+          <article class="metric-card">
+            <span class="metric-label">Monitored assets</span>
+            <strong id="metricAssets">0</strong>
+            <small>Unique machine IDs</small>
+          </article>
+          <article class="metric-card normal-card">
+            <span class="metric-label">Normal</span>
+            <strong id="metricNormal">0</strong>
+            <small>Health score 85 or above</small>
+          </article>
+          <article class="metric-card attention-card">
+            <span class="metric-label">Attention</span>
+            <strong id="metricAttention">0</strong>
+            <small>Health score 60 to 84</small>
+          </article>
+          <article class="metric-card critical-card">
+            <span class="metric-label">Critical</span>
+            <strong id="metricCritical">0</strong>
+            <small>Health score below 60</small>
+          </article>
+        </section>
+
+        <section class="analysis-grid" aria-label="Sensor trend and risk profile">
+          <article class="panel trend-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Sensor trend</p>
+                <h2>Temperature and vibration</h2>
+              </div>
+              <label class="select-label">
+                <span>Asset</span>
+                <select id="machineSelect" aria-label="Choose an asset"></select>
+              </label>
+            </div>
+            <canvas id="trendCanvas" width="880" height="330" aria-label="Temperature and vibration trend chart"></canvas>
+            <div class="chart-legend">
+              <span><i class="legend-line temperature-line"></i>Temperature (C)</span>
+              <span><i class="legend-line vibration-line"></i>Vibration (mm/s)</span>
+            </div>
+          </article>
+
+          <article class="panel risk-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Fleet profile</p>
+                <h2>Risk distribution</h2>
+              </div>
+            </div>
+            <div class="risk-visual">
+              <canvas id="riskCanvas" width="220" height="220" aria-label="Risk distribution chart"></canvas>
+              <div class="risk-legend" id="riskLegend"></div>
+            </div>
+            <div class="latest-reading" id="latestReading"></div>
+          </article>
+        </section>
+
+        <section class="panel asset-panel" id="assets">
+          <div class="panel-header panel-header-wrap">
+            <div>
+              <p class="eyebrow">Asset register</p>
+              <h2>Current machine condition</h2>
+            </div>
+            <span class="table-note">Sorted by highest maintenance risk</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Asset</th>
+                  <th scope="col">Health score</th>
+                  <th scope="col">Risk</th>
+                  <th scope="col">Temperature</th>
+                  <th scope="col">Vibration</th>
+                  <th scope="col">RPM</th>
+                  <th scope="col">Runtime</th>
+                  <th scope="col">Action</th>
+                </tr>
+              </thead>
+              <tbody id="assetRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel maintenance-panel" id="maintenance">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Maintenance queue</p>
+              <h2>Recommended next actions</h2>
+            </div>
+          </div>
+          <div class="maintenance-list" id="maintenanceList"></div>
+        </section>
+
+        <section class="data-grid" id="data">
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Input schema</p>
+                <h2>CSV fields</h2>
+              </div>
+            </div>
+            <div class="schema-table">
+              <div><code>timestamp</code><span>Measurement date and time</span></div>
+              <div><code>machine_id</code><span>Unique asset identifier</span></div>
+              <div><code>temperature_c</code><span>Operating temperature</span></div>
+              <div><code>vibration_mm_s</code><span>Vibration velocity</span></div>
+              <div><code>rpm</code><span>Rotational speed</span></div>
+              <div><code>runtime_hours</code><span>Total operating hours</span></div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Risk method</p>
+                <h2>Transparent health model</h2>
+              </div>
+            </div>
+            <ul class="method-list">
+              <li>Temperature, vibration, RPM deviation, and accumulated runtime contribute penalties.</li>
+              <li>Health score begins at 100 and is reduced by abnormal operating conditions.</li>
+              <li>Thresholds are configurable engineering assumptions for demonstration use.</li>
+            </ul>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
