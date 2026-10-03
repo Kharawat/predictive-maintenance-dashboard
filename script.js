@@ -175,6 +175,7 @@ function makeRecommendation(reading, rpmDeviation, risk) {
 }
 
 function parseCsv(text) {
+  if (text.length > 5 * 1024 * 1024) throw new Error("CSV exceeds 5 MiB");
   const rows = [];
   let row = [];
   let cell = "";
@@ -196,6 +197,7 @@ function parseCsv(text) {
       if (char === "\r" && next === "\n") index += 1;
       row.push(cell.trim());
       if (row.some((value) => value.length > 0)) rows.push(row);
+      if (rows.length > 20001) throw new Error("CSV exceeds 20000 data rows");
       row = [];
       cell = "";
     } else {
@@ -205,6 +207,7 @@ function parseCsv(text) {
 
   row.push(cell.trim());
   if (row.some((value) => value.length > 0)) rows.push(row);
+  if (rows.length > 20001) throw new Error("CSV exceeds 20000 data rows");
   if (rows.length < 2) return [];
 
   const headers = rows[0].map(normalizeHeader);
@@ -238,6 +241,7 @@ function normalizeHeader(value) {
 
 function normalizeImportedRows(rows) {
   return rows
+    .filter((item) => [item.temperature, item.vibration, item.rpm, item.runtimeHours].every((value) => String(value ?? "").trim() !== ""))
     .map((item) => {
       const timestamp = new Date(item.timestamp);
       return {
@@ -251,7 +255,7 @@ function normalizeImportedRows(rows) {
     })
     .filter(
       (item) =>
-        item.machineId &&
+        item.machineId && item.machineId.length <= 128 &&
         !Number.isNaN(item.timestamp.getTime()) &&
         Number.isFinite(item.temperature) &&
         Number.isFinite(item.vibration) &&
@@ -525,6 +529,13 @@ function round(value, decimals) {
   return Math.round(value * factor) / factor;
 }
 
+function csvCell(value) {
+  let text = String(value ?? "");
+  // CSV quotes are syntax, not a spreadsheet formula boundary.
+  if (typeof value === "string" && /^[\s\u0000-\u001f]*[=+@-]/.test(text)) text = "'" + text;
+  return '"' + text.replaceAll('"', '""') + '"';
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -559,7 +570,7 @@ function exportReport() {
     machine.recommendation,
   ]);
   const csv = [headers, ...rows]
-    .map((row) => row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(","))
+    .map((row) => row.map(csvCell).join(","))
     .join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -576,7 +587,15 @@ refs.csvInput.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  const imported = normalizeImportedRows(parseCsv(await file.text()));
+  let imported;
+  try {
+    if (file.size > 5 * 1024 * 1024) throw new Error("CSV exceeds 5 MiB");
+    imported = normalizeImportedRows(parseCsv(await file.text()));
+  } catch {
+    refs.statusMessage.textContent = "Import rejected. Use a valid CSV under 5 MiB and 20,000 rows.";
+    event.target.value = "";
+    return;
+  }
   if (!imported.length) {
     refs.statusMessage.textContent = "No valid rows found. Check the CSV field names and values.";
     event.target.value = "";
